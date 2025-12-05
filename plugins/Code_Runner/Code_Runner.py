@@ -10,7 +10,7 @@ def setup_plugin(IDE):
     IDE.run_menu.add_command(label="C++ File)", command=lambda: Code_run(IDE, "CPP"))
     IDE.run_menu.add_command(label="Java File", command=lambda: Code_run(IDE, "Java"))
     IDE.run_menu.add_command(label="HTML File", command=lambda: Code_run(IDE, "HTML"))
-    print("Code Runner Plugin Has Been Loaded")
+    print("Code Runner Plugin Loaded")
 
 def run_cmd(command, cwd=None, env=None):
     subprocess.Popen(f'start cmd /k "{command}"', shell=True, cwd=cwd, env=env)

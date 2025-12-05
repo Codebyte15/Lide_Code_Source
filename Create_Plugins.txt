@@ -2,7 +2,7 @@
 
 # The Basic Funtion For Entry
 
-def setup_plugin(IDE, root, current_file , zoom):
+def setup_plugin(IDE):
      
     """ rest of the code"""
 
@@ -18,8 +18,6 @@ FEW EXTERNAL LIBRARIES WHICH YOU CAN ADD :--
 
 1) customtkinter 
 2) requests
-
-
 
 # ON LATER UPDATES MORE LIBRARIES WILL BE ADDED
 

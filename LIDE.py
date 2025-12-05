@@ -16,7 +16,7 @@ class ide:
             self.root.wm_iconbitmap("icon/lide.ico")
         except Exception:
             pass
-        self.VERSION = "v2.2.0_pre-release"
+        self.VERSION = "v2.2.0_stable"
         self.BASE_URL = "https://github.com/Codebyte15/Lide_Code/releases/download"
         self.root.geometry(f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}")
         self.root.after(100, lambda:self.root.state("zoomed"))
@@ -115,9 +115,9 @@ class ide:
                 "booleans": ("True", "False", "None"),
                 "colors": {
                     "keyword": "#569CD6",
-                    "datatype": "#4FC1FF",
-                    "builtin": "#4EC9B0",
-                    "boolean": "#569CD6",
+                    "datatype": "#FFFF00",
+                    "builtin": "#FFFF00",
+                    "boolean": "#FFFF00",
                     "string": "#CE9178",
                     "comment": "#6A9955",
                     "number": "#B5CEA8",
@@ -454,7 +454,7 @@ class ide:
         if not path:
             return
         data_size = os.path.getsize(path) 
-        if data_size >= 20971520:
+        if data_size >= 2097152:
             messagebox.showinfo("Large File", "The file is too large")
             return
         self.current_file = path
@@ -938,9 +938,9 @@ class ide:
                             if hasattr(module, "setup_plugin"):
                                 module.setup_plugin(self)
                                 self.plugin_menu.add_command(label=folder.name)
-    
+                                
                             time.sleep(0.3)
-    
+                            
                         except Exception as e:
                             messagebox.showerror("Plugin Load Error", f"Error loading plugin '{folder.name}':\n{e}")
     
