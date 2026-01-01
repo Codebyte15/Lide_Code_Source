@@ -1,4 +1,4 @@
-                    LIDE v3.0.0_pre_release Features
+                    LIDE v3.0.0_stable Features
                    -----------------------------
 
 In this new version, you will get:

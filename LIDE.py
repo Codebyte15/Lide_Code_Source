@@ -22,12 +22,12 @@ class lide:
         self.root.update_idletasks()
         self.root.minsize(500, 500)
         self.root.maxsize(5000, 5000)
-        self.VERSION = "v3.0.0_pre_release"
+        self.VERSION = "v3.0.0_stable"
         try: 
             self.root.wm_iconbitmap("icon/lide.ico")
         except Exception:
             pass
-        self.root.title("LIDE - (Lightweight Internal Development Editor) v3.0.0_pre_release")
+        self.root.title("LIDE - (Lightweight Internal Development Editor) v3.0.0_stable")
         self.BASE_URL = "https://github.com/Codebyte15/Lide_Code/releases/download"
         self.tree = None
         self.style = None
@@ -66,11 +66,9 @@ class lide:
         self.extract_menu = None
         self.run_mode_cmd = False
         self.content_frame = None
-        self.workspace_ini = None
         self.run_btn_frame = None
         self._linecount_job = None
         self.preview_editor = None
-        self.workspace_area = None
         self.terminal_frame = None
         self.frame_for_tabs = None
         self.tab_inner_frame = None
@@ -80,7 +78,6 @@ class lide:
         self.tab_canvas_frame = None
         self.decompile_editor = None
         self.line_count_label = None
-        self._workspace_mode = False
         self.editor_main_frame = None
         self.RUN_INBUILT = "terminal"        
         self.more_settings_tab = None
@@ -101,10 +98,6 @@ class lide:
         open(self.log_path, "a", encoding="utf-8").close()
         self.autosave_path = os.path.join(self.lide_app_dir, "autosave.ini")
         open(self.autosave_path, "a", encoding="utf-8").close()
-        self.workspace_appdata = os.path.join(self.lide_app_dir, "workspace")
-        os.makedirs(self.workspace_appdata, exist_ok=True)
-        self.workspace_path = os.path.join(self.workspace_appdata, "workspace.ini")
-        open(self.workspace_path, "a", encoding="utf-8").close()
         self.zoom_in_appdata = os.path.join(self.lide_app_dir, "zoom.ini")
         open(self.zoom_in_appdata, "a", encoding="utf-8").close()
         self.font_path = os.path.join(self.lide_app_dir, "font.ini")
@@ -182,29 +175,6 @@ class lide:
                 f.write("Consolas")
                 f.flush()
                 os.fsync(f.fileno())
-                
-        workspace_file = Path(self.workspace_path)
-        if workspace_file.exists():
-            try:
-                firstline = workspace_file.read_text(encoding="utf-8").strip()
-                firstline_path = Path(firstline)
-                workspace_ini = firstline_path / "workspace.ini"
-                if firstline_path.exists() and workspace_ini.exists():
-                    self.workspace_area = firstline_path
-                    self.workspace_ini = workspace_ini
-                    self._workspace_mode = True
-                else:
-                    self.workspace_area = None
-                    self.workspace_ini = None
-                    self._workspace_mode = False
-            except Exception:
-                self.workspace_area = None
-                self.workspace_ini = None
-                self._workspace_mode = False
-        else:
-            self.workspace_area = None
-            self.workspace_ini = None
-            self._workspace_mode = False
             
         self.BLOCK_KEYWORDS = {
             ".py":  ('def', 'class', 'if', 'elif', 'else', 'for', 'while', 'try', 'except', 'finally', 'with', 'async','{','[','('),
@@ -761,9 +731,6 @@ class lide:
         self.file_menu.add_command(label="New", command=self.new_file)
         self.file_menu.add_command(label="Open", command=self.open_file)
         self.file_menu.add_command(label="Save", command=self.save_file)
-        self.file_menu.add_command(label="Create Workspace", command=self.workspace)
-        self.file_menu.add_command(label="Open Workspace", command=self.open_workspace)
-        self.file_menu.add_command(label="Delete Workspace", command=self.delete_workspace)
         self.file_menu.add_separator()
         self.file_menu.add_command(label="Exit", command=self.on_close)
         self.menubar.add_cascade(label="File", menu=self.file_menu)
@@ -1272,8 +1239,6 @@ class lide:
                     sync_drive_menu()
 
             def go_parent():
-                if self._workspace_mode:
-                    return
                 parent = os.path.dirname(self.current_path.rstrip("\\"))
                 if os.path.isdir(parent):
                     self.current_path = parent
@@ -1282,8 +1247,6 @@ class lide:
                     sync_drive_menu()
 
             def change_drive(drive):
-                if self._workspace_mode:
-                    return
                 self.current_path = drive
                 self.tree.delete(*self.tree.get_children())
                 self.load_directory(drive)
@@ -1498,7 +1461,7 @@ class lide:
             sync_drive_menu()
             self.load_directory(self.current_path)
             self.root.after(1000, periodic_check)
-    
+            
     def load_directory(self,path, parent_node=""):
         if hasattr(self, "path_label") and self.path_label.winfo_exists():
             self.path_label.configure(
@@ -1522,24 +1485,26 @@ class lide:
                 messagebox.showwarning("Warning", f"Cannot access: {full_path}")
     
     def refresh_directory_node(self, dir_path):
-        if not self.tree:
-            return
-        if self._workspace_mode:
-            return
-        if not dir_path or not os.path.isdir(dir_path):
+        if not self.tree or not dir_path:
             return
 
-        def find_node(target, node=""):
+        dir_path = os.path.normpath(os.path.abspath(dir_path))
+        if not os.path.isdir(dir_path):
+            return
+
+        def find_node(node=""):
             for n in self.tree.get_children(node):
                 values = self.tree.item(n, "values")
-                if values and values[0] == target:
-                    return n
-                found = find_node(target, n)
+                if values:
+                    node_path = os.path.normpath(os.path.abspath(values[0]))
+                    if node_path == dir_path:
+                        return n
+                found = find_node(n)
                 if found:
                     return found
             return None
-
-        node = find_node(dir_path)
+    
+        node = find_node()
     
         if node:
             self.tree.delete(*self.tree.get_children(node))
@@ -1711,8 +1676,6 @@ class lide:
     
     def new_file(self):
         name = simpledialog.askstring("Input", "Enter file name with extension:")
-        if self._workspace_mode:
-            self._workspace_mode = False
         if not name:
             return
 
@@ -1754,9 +1717,6 @@ class lide:
         self._load_file_mainthread(path)
 
     def _load_file_mainthread(self, path):
-        if self._workspace_mode:
-            self._workspace_mode = False
-
         already_open = path in self.open_tabs
         self.current_file = path
         self.add_tab(path)
@@ -1919,118 +1879,6 @@ class lide:
         self._autosave_running = False
         self.autosave_menu.entryconfig("Start", state="normal")
         self.autosave_menu.entryconfig("Stop", state="disabled")
-
-    def workspace(self):
-        if self.workspace_ini and self.workspace_area and self.workspace_area.exists():
-            result = messagebox.askyesno(
-                "Existing Workspace",
-                f"A workspace already exists at {self.workspace_area}.\n"
-                "Creating a new workspace will delete the previous one.\n\n"
-                "Do you want to continue?"
-            )
-            if not result:
-                return
-
-            try:
-                shutil.rmtree(self.workspace_area)
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to delete existing workspace: {e}")
-                return
-
-        self.create_new_workspace()
-
-
-    def create_new_workspace(self):
-        workspace_name = simpledialog.askstring("Workspace", "Name Your Workspace")
-        if not workspace_name:
-            messagebox.showinfo("Cancelled", "Workspace creation cancelled.")
-            return
-
-        workspace_dir = filedialog.askdirectory(title="Select Workspace Location")
-        if not workspace_dir:
-            messagebox.showinfo("Cancelled", "Workspace creation cancelled.")
-            return
-
-        workspace_dir = Path(workspace_dir)
-        workspace_ini_path = workspace_dir / "workspace.ini"
-
-        workspace_dir.mkdir(parents=True, exist_ok=True)
-        workspace_ini_path.write_text(workspace_name, encoding="utf-8")
-
-        self.workspace_area = workspace_dir
-        self.workspace_ini = workspace_ini_path
-
-        try:
-            with open(self.workspace_path, "w", encoding="utf-8") as f:
-                f.write(str(workspace_dir))
-                f.flush()
-                os.fsync(f.fileno())
-        except Exception as e:
-            messagebox.showerror("Failed", f"Failed to save workspace path: {e}")
-            return
-
-        messagebox.showinfo("Success", f"Workspace '{workspace_name}' created at {workspace_dir}")
-        self.open_workspace()
-        
-    def open_workspace(self):
-        try:
-            if not self.workspace_ini or not self.workspace_ini.exists():
-                messagebox.showwarning("No Workspace", "No workspace is currently set up.")
-                return
-            if not self.workspace_area or not self.workspace_area.exists():
-                messagebox.showwarning("Invalid Workspace", "The workspace folder does not exist.")
-                return
-
-            workspace_name = self.workspace_ini.read_text(encoding="utf-8").strip()
-
-            permission = messagebox.askyesno("Open Workspace",
-                                             f"Do you want to open the existing workspace '{workspace_name}'?")
-            if not permission:
-                return
-
-            self.refresh_directory_node(self.workspace_area)
-
-            self._workspace_mode = True
-
-            messagebox.showinfo("Workspace Loaded",
-                                f"Workspace '{workspace_name}' loaded from {self.workspace_area}")
-            self.update_title()
-
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to open workspace: {e}")
-            
-    def delete_workspace(self):
-        if not getattr(self, "_workspace_mode", False) or not self.workspace_ini or not self.workspace_ini.exists():
-            messagebox.showinfo("No Workspace", "No workspace is currently loaded.")
-            return
-
-        workspace_name = self.workspace_ini.read_text(encoding="utf-8").strip() if self.workspace_ini else "Unknown"
-        confirm = messagebox.askyesno(
-            "Delete Workspace",
-            f"Are you sure you want to delete the workspace '{workspace_name}' at '{self.workspace_area}'?\n"
-            "This action cannot be undone!"
-        )
-        if not confirm:
-            return
-            
-        self.workspace_area = None
-        self.workspace_ini = None
-        self._workspace_mode = False
-
-        if self.workspace_path:
-            workspace_path = Path(self.workspace_path)
-            if workspace_path.exists():
-                try:
-                    with open(workspace_path, "w") as f:
-                        f.write("")
-                        f.flush()
-                        os.fsync(f.fileno())
-                except Exception:
-                    pass
-
-        messagebox.showinfo("Workspace Deleted", f"The workspace '{workspace_name}' has been deleted.")
-        self.refresh_directory_node(None)
-        self.update_title()
 
     def run_app(self):
         self.save_file()
@@ -3240,23 +3088,13 @@ class lide:
         name = self.current_file if self.current_file else "Untitled"
         if not self.is_saved:
             name = "*" + name
-
-        workspace_info = ""
-        if getattr(self, "_workspace_mode", False):
-            if self.workspace_ini and self.workspace_ini.exists() and self.workspace_area and self.workspace_area.exists():
-                try:
-                    workspace_name = self.workspace_ini.read_text(encoding="utf-8").strip()
-                    workspace_location = str(self.workspace_area)
-                    workspace_info = f" | WORKSPACE: {workspace_name} ({workspace_location})"
-                except Exception:
-                    workspace_info = " | WORKSPACE: Unknown"
         
         if hasattr(self, "path_label") and self.path_label.winfo_exists():
             self.path_label.configure(
                 text=self.current_file if self.current_file else ""
             )
 
-        self.root.title(f"{name}{workspace_info} - LIDE(Lightweight Internal Development Editor) v3.0.0_pre_release")
+        self.root.title(f"{name} - LIDE(Lightweight Internal Development Editor) v3.0.0_stable")
 
     def on_text_change(self,event=None):
         try:
@@ -3444,7 +3282,10 @@ class lide:
     def show_popup(self, title, message, font_name="Arial", font_size=14):
         popup = tk.Toplevel(self.root)
         popup.title(title)
-        popup.iconbitmap("icon/lide.ico")
+        try:
+            popup.iconbitmap("icon/lide.ico")
+        except:
+            pass
         popup.resizable(False, False)
         popup.configure(bg="gray20")
     
@@ -3502,7 +3343,7 @@ class lide:
 
                 self.show_popup(
                     "New Version v3.0.0_stable",
-                    """LIDE v3.0.0_pre_release Features
+                    """LIDE v3.0.0_stable Features
 
 In this new version, you will get:
 1) Chunk Syntax Highlighter
@@ -3616,9 +3457,9 @@ SOFTWARE""",
 LIDE = lide()
 LIDE.main()
 LIDE.preview()
+LIDE.explorer()
 LIDE.check_new_version_features()
 LIDE.root.after(1000, lambda: LIDE.plugin())
-LIDE.explorer()
 LIDE.root.after(50, lambda: LIDE.check_update())
 LIDE.root.after(100, lambda: LIDE.root.state("zoomed"))
 LIDE.editor.bind("<MouseWheel>", lambda e: LIDE.on_editor_mousewheel(e))
